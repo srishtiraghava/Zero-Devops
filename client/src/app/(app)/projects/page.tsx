@@ -8,15 +8,27 @@ import {
   Search,
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useProjects } from "@/features/projects";
+import { useProjects, useDeleteProject } from "@/features/projects";
 import { useAllDeployments } from "@/features/deployments";
 import { ProjectCard } from "@/features/projects";
+import { toast } from "@/stores/toast-store";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 export default function ProjectsPage() {
   const { data, isPending, isError, error } = useProjects();
   const builds = useAllDeployments(data ?? []);
+  const deleteProjectMutation = useDeleteProject();
   const [search, setSearch] = useState("");
   const [list, setList] = useState(false);
+  const [pendingDeleteProject, setPendingDeleteProject] = useState<{ id: string; name: string } | null>(null);
 
   const filtered = useMemo(
     () =>
@@ -28,9 +40,34 @@ export default function ProjectsPage() {
     [data, search],
   );
 
+  const handleDeleteProject = (project: { id: string; repository_name: string }) => {
+    setPendingDeleteProject({ id: project.id, name: project.repository_name });
+  };
+
+  const confirmDelete = () => {
+    if (!pendingDeleteProject) return;
+
+    deleteProjectMutation.mutate(pendingDeleteProject.id, {
+      onSuccess: () => {
+        toast({
+          title: "Project deleted",
+          description: `${pendingDeleteProject.name} was removed successfully.`,
+          variant: "default",
+        });
+        setPendingDeleteProject(null);
+      },
+      onError: () => {
+        toast({
+          title: "Delete failed",
+          description: `Unable to delete ${pendingDeleteProject.name}. Please try again.`,
+          variant: "destructive",
+        });
+      },
+    });
+  };
+
   return (
     <div className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8">
-      {/* Header */}
       <div className="flex flex-col gap-4 border-b border-white/[0.07] pb-6 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <p className="text-xs text-white/35">Workspace</p>
@@ -47,8 +84,7 @@ export default function ProjectsPage() {
         </Link>
       </div>
 
-      {/* Controls: search + view toggle */}
-      <div className="mt-5 flex gap-2">
+      <div className="mt-5 flex flex-col gap-2 sm:flex-row">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-3 size-4 text-white/25" />
           <input
@@ -58,33 +94,34 @@ export default function ProjectsPage() {
             className="h-10 w-full rounded-lg border border-white/[0.09] bg-white/[0.025] pl-9 pr-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-white/20"
           />
         </div>
-        <button
-          type="button"
-          onClick={() => setList(false)}
-          className={`rounded-lg border px-3 ${
-            !list
-              ? "border-white/15 bg-white/[0.07] text-white"
-              : "border-white/[0.08] text-white/35"
-          }`}
-          aria-label="Grid view"
-        >
-          <Grid2X2 className="size-4" />
-        </button>
-        <button
-          type="button"
-          onClick={() => setList(true)}
-          className={`rounded-lg border px-3 ${
-            list
-              ? "border-white/15 bg-white/[0.07] text-white"
-              : "border-white/[0.08] text-white/35"
-          }`}
-          aria-label="List view"
-        >
-          <List className="size-4" />
-        </button>
+        <div className="flex shrink-0 gap-2">
+          <button
+            type="button"
+            onClick={() => setList(false)}
+            className={`rounded-lg border px-3 ${
+              !list
+                ? "border-white/15 bg-white/[0.07] text-white"
+                : "border-white/[0.08] text-white/35"
+            }`}
+            aria-label="Grid view"
+          >
+            <Grid2X2 className="size-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setList(true)}
+            className={`rounded-lg border px-3 ${
+              list
+                ? "border-white/15 bg-white/[0.07] text-white"
+                : "border-white/[0.08] text-white/35"
+            }`}
+            aria-label="List view"
+          >
+            <List className="size-4" />
+          </button>
+        </div>
       </div>
 
-      {/* Content */}
       {isPending ? (
         <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {[1, 2, 3, 4, 5, 6].map((n) => (
@@ -102,13 +139,16 @@ export default function ProjectsPage() {
           }`}
         >
           {filtered.map((project) => {
-            const latestDeployment = builds?.data?.find(d => d.project_id === project.id) ?? null;
+            const latestDeployment = builds?.data?.find((d) => d.project_id === project.id) ?? null;
             return (
               <ProjectCard
                 key={project.id}
                 project={project}
                 latestDeployment={latestDeployment}
                 variant={list ? "list" : "dashboard"}
+                showActions
+                onDelete={() => handleDeleteProject(project)}
+                deleteDisabled={deleteProjectMutation.isPending}
                 onClick={() => {}}
               />
             );
@@ -120,6 +160,40 @@ export default function ProjectsPage() {
           <p className="mt-3 text-sm text-white/50">No projects match your search.</p>
         </div>
       )}
+
+      <Dialog open={Boolean(pendingDeleteProject)} onOpenChange={(open) => !open && setPendingDeleteProject(null)}>
+        <DialogContent className="border-white/10 bg-[#0b1220] text-white sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-white">Delete project</DialogTitle>
+            <DialogDescription className="text-white/60">
+              This action will permanently remove <span className="font-medium text-white">{pendingDeleteProject?.name ?? "this project"}</span> from Zero-DevOps.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="rounded-xl border border-rose-500/25 bg-rose-500/5 p-3 text-sm text-rose-100/80">
+            This cannot be undone. Existing project settings and build history will be removed from the app.
+          </div>
+
+          <DialogFooter className="mt-2 sm:justify-end">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setPendingDeleteProject(null)}
+              disabled={deleteProjectMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={confirmDelete}
+              disabled={deleteProjectMutation.isPending}
+            >
+              {deleteProjectMutation.isPending ? "Deleting..." : "Delete project"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

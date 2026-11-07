@@ -78,8 +78,49 @@ export default function ProjectDetailPage() {
     }
   };
 
-  const formatDate = (dateStr: string) => new Date(dateStr).toLocaleString();
-  const formatShortDate = (dateStr: string) => new Date(dateStr).toLocaleDateString();
+  const formatDate = (dateStr?: string | null, missingLabel?: string) => {
+    if (!dateStr) return missingLabel ?? "Missing date";
+    const value = new Date(dateStr);
+    return Number.isNaN(value.getTime()) ? missingLabel ?? `Invalid date: ${dateStr}` : value.toLocaleString();
+  };
+  const formatShortDate = (dateStr?: string | null) => {
+    if (!dateStr) return "Missing updated_at";
+    const value = new Date(dateStr);
+    return Number.isNaN(value.getTime()) ? `Invalid updated_at: ${dateStr}` : value.toLocaleDateString();
+  };
+
+  const getBuildDuration = (deployment: { started_at?: string | null; finished_at?: string | null; completed_at?: string | null; duration?: number | string | null; status?: string }) => {
+    if (typeof deployment.duration === "number" && Number.isFinite(deployment.duration)) {
+      return `${deployment.duration}s`;
+    }
+
+    if (typeof deployment.duration === "string" && deployment.duration.trim()) {
+      return deployment.duration;
+    }
+
+    const startedAt = deployment.started_at ?? null;
+    const endedAt = deployment.finished_at ?? deployment.completed_at ?? null;
+
+    if (!startedAt && !endedAt) {
+      if (deployment.status === "building" || deployment.status === "pending") return "Running";
+      return "Missing started_at and finished_at";
+    }
+
+    if (!startedAt) return "Missing started_at";
+    if (!endedAt) {
+      if (deployment.status === "building" || deployment.status === "pending") return "Running";
+      return "Missing finished_at";
+    }
+
+    const start = new Date(startedAt).getTime();
+    const end = new Date(endedAt).getTime();
+    if (Number.isNaN(start) || Number.isNaN(end)) return "Invalid started_at or finished_at";
+    const diffSeconds = Math.max(0, Math.round((end - start) / 1000));
+    if (diffSeconds < 60) return `${diffSeconds}s`;
+    const minutes = Math.floor(diffSeconds / 60);
+    const seconds = diffSeconds % 60;
+    return `${minutes}m ${seconds}s`;
+  };
 
   return (
     <div className="mx-auto max-w-[1400px] px-4 py-6 sm:px-6 lg:px-8">
@@ -93,16 +134,16 @@ export default function ProjectDetailPage() {
 
       {/* Project Header */}
       <div className="mt-5 flex flex-col gap-5 border-b border-white/[0.07] pb-6 lg:flex-row lg:items-end lg:justify-between">
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="flex items-center gap-3">
-            <span className="flex size-10 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400/15 to-fuchsia-500/15">
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400/15 to-fuchsia-500/15">
               <Github className="size-5 text-white/70" />
             </span>
-            <div className="min-w-0">
-              <h1 className="truncate text-2xl font-semibold tracking-[-0.035em]">
+            <div className="min-w-0 flex-1">
+              <h1 className="break-words text-2xl font-semibold tracking-[-0.035em] text-white">
                 {p.repository_name}
               </h1>
-              <p className="truncate text-sm text-white/35">{p.repository_full_name}</p>
+              <p className="mt-1 break-words text-sm text-white/35">{p.repository_full_name}</p>
             </div>
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-white/35">
@@ -116,7 +157,7 @@ export default function ProjectDetailPage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2 sm:justify-end">
           <Button
             variant="outline"
             onClick={() => createBuild.mutate(branch)}
@@ -193,12 +234,19 @@ export default function ProjectDetailPage() {
                         </span>
                         <DeploymentStatusBadge status={b.status} size="sm" />
                         <span className="text-[10px] text-white/25">
-                          {formatDate(b.created_at)}
+                          {formatDate(b.started_at ?? b.created_at)}
                         </span>
                         <span className="ml-auto text-[10px] text-white/30">
                           {b.trigger ?? "manual"}
                         </span>
                       </div>
+
+                      <div className="mt-3 grid gap-2 text-[10px] text-white/35 sm:grid-cols-3">
+                        <span>Started: {formatDate(b.started_at ?? b.created_at)}</span>
+                        <span>Finished: {formatDate(b.finished_at ?? b.completed_at)}</span>
+                        <span>Duration: {getBuildDuration(b)}</span>
+                      </div>
+
                       <div className="mt-3 flex flex-wrap gap-4 text-[10px] text-white/35">
                         <span>commit {b.commit_sha?.slice(0, 12) ?? "—"}</span>
                         {b.output_url ? (
@@ -291,6 +339,15 @@ export default function ProjectDetailPage() {
                       </div>
                       <p className="mt-2 text-[10px] text-white/35">
                         {latest.commit_sha?.slice(0, 12) ?? "No commit SHA"}
+                      </p>
+                      <p className="mt-2 text-[10px] text-white/35">
+                        Started: {formatDate(latest.started_at ?? latest.created_at)}
+                      </p>
+                      <p className="mt-1 text-[10px] text-white/35">
+                        Completed: {formatDate(latest.finished_at ?? latest.completed_at)}
+                      </p>
+                      <p className="mt-1 text-[10px] text-white/35">
+                        Duration: {getBuildDuration(latest)}
                       </p>
                     </>
                   ) : (

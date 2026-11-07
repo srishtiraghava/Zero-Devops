@@ -49,6 +49,10 @@ export interface Deployment {
   trigger?: string;
   desired_revision_generation?: number;
   build_number?: number;
+  started_at?: string | null;
+  finished_at?: string | null;
+  completed_at?: string | null;
+  duration?: number | string | null;
   configuration_snapshot?: BuildConfiguration;
   configuration_version?: number;
   command_policy_version?: string;

@@ -68,7 +68,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-dvh bg-[#050505] text-white">
-      <aside className={cn("fixed inset-y-0 left-0 z-50 flex w-[258px] flex-col border-r border-white/[0.08] bg-[#060606]/95 px-3 py-4 backdrop-blur-2xl transition-transform lg:translate-x-0", mobileOpen ? "translate-x-0" : "-translate-x-full")}>
+      <aside className={cn("fixed inset-y-0 left-0 z-50 flex w-[258px] max-w-[85vw] flex-col border-r border-white/[0.08] bg-[#060606]/95 px-3 py-4 backdrop-blur-2xl transition-transform lg:translate-x-0", mobileOpen ? "translate-x-0" : "-translate-x-full")}>
         <div className="flex items-center justify-between px-2 pb-5">
           <Logo />
           <button onClick={() => setMobileOpen(false)} className="rounded-lg p-2 text-white/45 hover:bg-white/[0.06] hover:text-white lg:hidden" aria-label="Close sidebar"><X className="size-4" /></button>
@@ -103,8 +103,12 @@ export function AppShell({ children }: { children: ReactNode }) {
         <header className="sticky top-0 z-40 border-b border-white/[0.07] bg-[#050505]/80 backdrop-blur-2xl">
           <div className="flex h-[66px] items-center gap-3 px-4 sm:px-6">
             <button onClick={() => setMobileOpen(true)} className="rounded-lg border border-white/10 p-2 text-white/60 lg:hidden" aria-label="Open sidebar"><Menu className="size-4" /></button>
-            <div className="flex min-w-0 items-center gap-2 text-sm"><button className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-white/70 hover:bg-white/[0.05] hover:text-white"><span className="truncate font-medium">All Projects</span><ChevronDown className="size-3.5 text-white/35" /></button><span className="text-white/15">/</span><span className="truncate text-white/35">{active?.label ?? "Workspace"}</span></div>
-            <div className="ml-auto flex items-center gap-2"><Link href={githubHref} className="hidden items-center gap-2 rounded-lg px-3 py-2 text-xs text-white/50 hover:bg-white/[0.05] hover:text-white sm:flex"><Github className="size-3.5" /> GitHub</Link><Link href="/deployments" className="hidden items-center gap-2 rounded-lg px-3 py-2 text-xs text-white/50 hover:bg-white/[0.05] hover:text-white md:flex"><BarChart3 className="size-3.5" /> Activity</Link><button onClick={() => setImportRepoOpen(true)} className="inline-flex h-9 items-center gap-2 rounded-lg bg-white px-3.5 text-xs font-semibold text-black shadow-[0_8px_30px_rgba(255,255,255,.08)] transition hover:bg-white/90"><Rocket className="size-3.5" /> New Deployment</button></div>
+            <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden text-sm">
+              <button className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-white/70 hover:bg-white/[0.05] hover:text-white"><span className="truncate font-medium">All Projects</span><ChevronDown className="size-3.5 shrink-0 text-white/35" /></button>
+              <span className="hidden text-white/15 sm:inline">/</span>
+              <span className="truncate text-white/35">{active?.label ?? "Workspace"}</span>
+            </div>
+            <div className="ml-auto flex shrink-0 items-center gap-2"><Link href={githubHref} className="hidden items-center gap-2 rounded-lg px-3 py-2 text-xs text-white/50 hover:bg-white/[0.05] hover:text-white sm:flex"><Github className="size-3.5" /> GitHub</Link><Link href="/deployments" className="hidden items-center gap-2 rounded-lg px-3 py-2 text-xs text-white/50 hover:bg-white/[0.05] hover:text-white md:flex"><BarChart3 className="size-3.5" /> Activity</Link><button onClick={() => setImportRepoOpen(true)} className="inline-flex h-9 items-center gap-2 rounded-lg bg-white px-3.5 text-xs font-semibold text-black shadow-[0_8px_30px_rgba(255,255,255,.08)] transition hover:bg-white/90"><Rocket className="size-3.5" /> <span className="hidden sm:inline">New Deployment</span><span className="sm:hidden">New</span></button></div>
           </div>
         </header>
         <main className="relative overflow-hidden">
